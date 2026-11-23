@@ -216,7 +216,7 @@ shop:
 
 ## 6. Источники и первая модель
 
-Теперь dbt нужно объяснить, откуда брать исходные данные.
+Теперь dbt нужно объяснить, откуда брать исходные сырые данные.
 
 Для этого используются источники — `sources`.
 
@@ -306,7 +306,7 @@ where lower(trim(status)) != 'test'
 
 И вот что на самом деле он отправил в базу.
 
-`dbt\target\run\shop\models\staging\stg_orders.sql`
+`dbt-duckdb-shop\target\run\shop\models\staging\stg_orders.sql`
 
 ```sql
   create view "shop"."dev_evgen"."stg_orders__dbt_tmp" as (
@@ -396,7 +396,7 @@ group by order_date
 
 На основании таких ссылок dbt строит граф зависимостей и сам определяет, в каком порядке запускать модели.
 
-## Разобраться с графом
+<img width="1418" height="408" alt="image" src="https://github.com/user-attachments/assets/df82d872-13a6-4d78-94b3-9d1845cfcb77" />
 
 Сначала должна выполниться `stg_orders`, а уже после неё — `daily_revenue`.
 
@@ -818,6 +818,33 @@ prod:
   threads: 1
 ```
 
+**Посмотреть граф зависимостей**
+
+Сгенерируем документацию dbt. В корне проекта выполни:
+
+```
+dbt docs generate
+```
+
+Команда создаст документацию и граф зависимостей на основе текущего проекта.
+
+Запусти локальный сервер документации
+
+```
+dbt docs serve
+```
+
+Обычно документация откроется по адресу: `http://localhost:8080`
+
+В правом нижнем углу кликнуть на значок:
+
+<img width="1896" height="913" alt="image" src="https://github.com/user-attachments/assets/c59ed332-2f81-438a-b559-836ef6085e03" />
+
+И откроется граф:
+
+<img width="1418" height="408" alt="image" src="https://github.com/user-attachments/assets/b00d33cc-0d19-49a5-bd84-b72ca967d83f" />
+
+
 ### Папка `target` в dbt
 
 `target` — это рабочая директория dbt, в которой хранятся результаты обработки проекта.
@@ -838,6 +865,7 @@ prod:
 | `compiled/` | Скомпилированные SQL-запросы после обработки Jinja |
 | `build/` | Результаты сборки отдельных ресурсов dbt |
 | `partial_parse.msgpack` | Данные для ускорения повторного разбора проекта |
+| run/ | SQL, связанный с фактическим выполнением модели | 
 
 Состав папки зависит от версии dbt и выполненных команд.
 
