@@ -296,7 +296,7 @@ where lower(trim(status)) != 'test'
 
 В SQL-файле мы написали только `SELECT`.
 
-<img width="583" height="200" alt="image" src="https://github.com/user-attachments/assets/a394191c-57e8-4440-bb74-86db2ff8ce55" />
+<img width="548" height="206" alt="image" src="https://github.com/user-attachments/assets/259612fc-2359-44da-bbfa-002ed7883064" />
 
 Мы не писали `CREATE TABLE` или `CREATE VIEW`.
 
@@ -625,6 +625,145 @@ where order_date >= (select max(order_date) from {{ this }})
 В исходной таблице город просто перезаписали. Старое значение потеряно. Снапшот это исправляет, при каждом запуске дбт он сравнивает данные с прошлым разом. Если город изменился.
 Он закрывает старую дату в колонке `dbt_vaild_to` и добавляет новую. У актуальной строки эта колонка будет пустой.
 Это SCD 2, только его не надо писать руками.
+
+
+
+
+
+
+## 13. Запуск
+
+Напомню, в качестве аналитического хранилища мы используем DuckDB.
+
+В нём будут храниться исходные данные слоя `raw`, промежуточные модели `staging` и аналитические витрины `marts`, которые мы создадим с помощью dbt.
+
+Для работы с проектом создадим виртуальное окружение Python и установим в него необходимые зависимости.
+
+Перейти в корень проекта и создать виртуальное окружение:
+
+```
+cd C:\Users\erohi\Desktop\dbt-duckdb-shop
+```
+
+```
+python -m venv .venv
+```
+
+Затем активируем его:
+
+```
+.\.venv\Scripts\Activate.ps1
+```
+
+<img width="640" height="89" alt="image" src="https://github.com/user-attachments/assets/ea02fc49-abf9-4c72-80fb-1fec13623ad9" />
+
+
+Затем установи зависимости:
+
+```
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+После установки проверим dbt:
+
+```
+dbt --version
+```
+
+Загружаем исходные данные в DuckDB, Выполни:
+
+```
+python scripts/load_data.py
+```
+
+Ожидаемый результат:
+
+```text
+Loaded raw.orders: 8 rows
+Loaded raw.clients: 4 rows
+```
+
+После этого в папке warehouse должен появиться файл: `shop.duckdb`
+
+
+Проверяем подключение. Убедись, что PowerShell находится в корне проекта: `C:\Users\erohi\Desktop\dbt-duckdb-shop`
+
+Выполни:
+
+```
+dbt debug
+```
+
+Так же можно проверить наше хранилище и посмотреть какие схемы есть в нем и таблицы:
+
+Схемы:
+```python
+python -c "import duckdb;
+con=duckdb.connect('warehouse/shop.duckdb');
+con.sql('SHOW SCHEMAS').show();
+con.close()"
+```
+
+<img width="380" height="132" alt="image" src="https://github.com/user-attachments/assets/5a4566e8-9780-4b68-8d02-fc187d77ac2a" />
+
+
+Таблицы в конкретной схеме:
+```python
+python -c "import duckdb;
+con=duckdb.connect('warehouse/shop.duckdb');
+con.sql('SHOW TABLES FROM raw').show();
+con.close()"
+```
+
+<img width="101" height="130" alt="image" src="https://github.com/user-attachments/assets/e09b119d-2765-488d-8cbb-07b954e23cc2" />
+
+Таблица заказов:
+```python
+python -c "import duckdb;
+con=duckdb.connect('warehouse/shop.duckdb');
+con.sql('SELECT * FROM raw.orders').show();
+con.close()"
+```
+
+<img width="659" height="243" alt="image" src="https://github.com/user-attachments/assets/34a4882b-803c-4758-a331-e981faa56059" />
+
+Таблица клиентов:
+```python
+python -c "import duckdb;
+con=duckdb.connect('warehouse/shop.duckdb');
+con.sql('SELECT * FROM raw.clients').show();
+con.close()"
+```
+
+<img width="620" height="172" alt="image" src="https://github.com/user-attachments/assets/07384115-3140-4600-b923-b3e52326b50d" />
+
+Теперь запускаем первую сборку. Первый `dbt build`. Выполни из корня проекта:
+
+```
+dbt build
+```
+
+dbt должен:
+
+1. Создать представление `stg_orders` в схеме `dev_evgen`.
+2. Создать таблицу `daily_revenue`.
+3. Создать инкрементальную таблицу `orders_inc`.
+4. Запустить проверки качества данных.
+
+<img width="1343" height="647" alt="image" src="https://github.com/user-attachments/assets/33b83b75-2065-43bb-8446-894254bacdbd" />
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
