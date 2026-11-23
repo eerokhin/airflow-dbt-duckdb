@@ -188,7 +188,7 @@ shop:
 
 Для этого используются источники — sources.
 
-Создадим файл `models/sources.yml`:
+Создадим файл `models/staging/sources.yml`:
 
 ```yaml
 version: 2
