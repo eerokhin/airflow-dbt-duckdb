@@ -536,41 +536,36 @@ where revenue_rub < 0
 
 Так же пример запроса который сформировался для базового теста в .yml файле
 
-<img width="963" height="208" alt="image" src="https://github.com/user-attachments/assets/78de4669-7493-41ea-ba2d-2cea7f8397cb" />
+<img width="605" height="215" alt="image" src="https://github.com/user-attachments/assets/6f92af8f-e2c1-4304-824e-ccdcd10db714" />
 
 ## 10. Проверка теста
 
-В сырые данные добавим дубль заказа. Из PowerShell:
+В сырые данные добавим дубль заказа. Из PowerShell.
 
-```docker compose exec airflow python```
+Запустим Python в интерактивном режиме:
 
-В Python:
+```python
+python
+```
+
+Вставим дубль:
 
 ```python
 import duckdb
 
-con = duckdb.connect('/opt/airflow/warehouse/shop.duckdb')
+con = duckdb.connect('warehouse/shop.duckdb')
 
 con.execute("""
     INSERT INTO raw.orders
-    SELECT *
-    FROM raw.orders
-    LIMIT 1
+    VALUES (1001, 1, '2026-11-20 09:15:00', 125000, 'paid')
 """)
+
+con.sql("SELECT * FROM raw.orders WHERE order_id = 1001").show()
+
+con.close()
 ```
 
-Это скопирует одну существующую запись в таблице, включая тот же `order_id`.
-
-Проверим, что дубль появился:
-
-```python
-con.sql("""
-    SELECT order_id, COUNT(*) AS cnt
-    FROM raw.orders
-    GROUP BY order_id
-    HAVING COUNT(*) > 1
-""").show()
-```
+<img width="625" height="134" alt="image" src="https://github.com/user-attachments/assets/4e0e198d-3a8e-4a1b-bec1-b74ae9ccbb73" />
 
 <img width="370" height="219" alt="image" src="https://github.com/user-attachments/assets/d5c4b3dd-2ff8-4b1b-9483-b350f1c74319" />
 
