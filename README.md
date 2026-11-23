@@ -266,7 +266,7 @@ where status != 'test'
 
 В SQL-файле мы написали только `SELECT`.
 
-![Uploading image.png…]()
+<img width="583" height="200" alt="image" src="https://github.com/user-attachments/assets/a394191c-57e8-4440-bb74-86db2ff8ce55" />
 
 Мы не писали `CREATE TABLE` или `CREATE VIEW`.
 
