@@ -134,8 +134,18 @@ shop/
 ```yaml
 name: shop
 version: "1.0.0"
+config-version: 2
 
 profile: shop
+
+model-paths: ["models"]
+test-paths: ["tests"]
+snapshot-paths: ["snapshots"]
+macro-paths: ["macros"]
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
 
 models:
   shop:
@@ -157,13 +167,12 @@ shop:
   outputs:
     dev:
       type: duckdb
-      path: shop.duckdb
+      path: /opt/airflow/warehouse/shop.duckdb
       schema: dev_evgen
       threads: 1
-
     prod:
       type: duckdb
-      path: shop.duckdb
+      path: /opt/airflow/warehouse/shop.duckdb
       schema: analytics
       threads: 1
 ```
@@ -190,9 +199,11 @@ shop:
 
 Для этого используются источники — sources.
 
-Создадим файл `models/staging/sources.yml`:
+Создадим файл `models/sources.yml`:
 
 ```yaml
+version: 2
+
 sources:
   - name: raw
     schema: raw
@@ -217,13 +228,13 @@ sources:
 
 ```sql
 select
-    order_id,
-    client_id,
-    cast(created_at as date) as order_date,
-    cast(amount_kop / 100.0 as decimal(12, 2)) as amount_rub,
-    status
+    cast(order_id as integer) as order_id,
+    cast(client_id as integer) as client_id,
+    cast(created_at as timestamp)::date as order_date,
+    cast(amount_kop as decimal(14, 0)) / 100 as amount_rub,
+    lower(trim(status)) as status
 from {{ source('raw', 'orders') }}
-where status != 'test'
+where lower(trim(status)) != 'test'
 ```
 
 Посмотрим, что здесь происходит.
@@ -274,11 +285,30 @@ where status != 'test'
 
 Почему?
 
-Потому что dbt сам управляет тем, во что превратится модель. Этот механизм называется материализацией.
+Потому что dbt сам управляет тем, во что превратится модель. Он посути это дописывает сам.
 
-### добавить запрос после запуска из таргет папки
+И вот что на самом деле он отправил в базу.
+
+`dbt\target\run\shop\models\staging\stg_orders.sql`
+
+```sql
+  create view "shop"."dev_evgen"."stg_orders__dbt_tmp" as (
+    select
+    cast(order_id as integer) as order_id,
+    cast(client_id as integer) as client_id,
+    cast(created_at as timestamp)::date as order_date,
+    cast(amount_kop as decimal(14, 0)) / 100 as amount_rub,
+    lower(trim(status)) as status
+from "shop"."raw"."orders"
+where lower(trim(status)) != 'test'
+  );
+```
+
+` create view` а внутри уже мой `select`
 
 В нашем проекте используются два основных типа материализации: `view` и `table`.
+
+То что в DBT превращает в модель, называется материализацией. Есть два основных варианта:
 
 **Первый вариант — view.**
 
@@ -290,7 +320,7 @@ where status != 'test'
 
 Это физическая таблица, в которой хранятся результаты выполнения запроса.
 
-При обычной материализации `table` dbt пересоздаёт таблицу при очередном запуске модели. Для обновления данных без полного пересоздания существуют и другие варианты, например `incremental`.
+При обычной материализации `table` dbt пересоздаёт таблицу при каждом запуске модели. Для обновления данных без полного пересоздания существуют и другие варианты, например `incremental`.
 
 Как dbt понимает, какой вариант использовать?
 
@@ -349,6 +379,8 @@ group by order_date
 
 На основании таких ссылок dbt строит граф зависимостей и сам определяет, в каком порядке запускать модели.
 
+## Разобраться с графом
+
 Сначала должна выполниться `stg_orders`, а уже после неё — `daily_revenue`.
 
 Нам больше не нужно вручную следить за последовательностью запуска десятков или сотен SQL-скриптов.
@@ -385,7 +417,7 @@ dbt build --target prod
 
 Например, мы хотим проверить, что номер заказа уникальный, не содержит NULL, статус входит в допустимый список, а клиент действительно существует в исходной таблице клиентов.
 
-Создадим файл:
+Создадим файл рядом с моделью и напишем правило:
 
 `models/staging/stg_orders.yml`
 
@@ -418,15 +450,15 @@ models:
 
 `not_null` — значение не должно быть пустым.
 
-`accepted_values` — статус должен входить в указанный список.
+`accepted_values` — статус заказа должен входить в указанный список.
 
-`relationships` — каждый `client_id` в нашей модели должен находиться в исходной таблице клиентов.
+`relationships` — каждый `client_id` в нашей модели должен находиться в исходной таблице клиентов. Тоесть проверяет что у каждого заказа есть клиент в таблице клиентов.
 
 Получается, мы описываем правила качества данных обычным YAML, а dbt сам генерирует SQL-запросы для их проверки.
 
 Но что, если нам нужна собственная проверка, которой нет среди стандартных?
 
-Для этого можно написать SQL-тест.
+Для этого можно написать свои SQL-тесты.
 
 Например, мы хотим убедиться, что выручка никогда не бывает отрицательной.
 
@@ -440,6 +472,16 @@ from {{ ref('daily_revenue') }}
 where revenue_rub < 0
 ```
 
+Как работает этот тест. DBT превращает правило в SQL запрос:
+
+`dbt\target\compiled\shop\tests\revenue_not_negative.sql
+
+```sql
+-- Singular test: должен вернуть 0 строк.
+select *
+from "shop"."dev_evgen"."daily_revenue"
+where revenue_rub < 0
+```
 Логика очень простая.
 
 Тест должен вернуть строки, которые нарушают наше условие.
@@ -451,6 +493,11 @@ where revenue_rub < 0
 И здесь снова используется `ref()`, поэтому dbt понимает, что этот тест зависит от модели `daily_revenue`.
 
 В результате мы получаем не просто набор SQL-запросов, а проект, в котором описаны преобразования, зависимости и правила качества данных.
+
+Так же пример запроса который сформировался для базового теста в .yml файле
+
+<img width="963" height="208" alt="image" src="https://github.com/user-attachments/assets/78de4669-7493-41ea-ba2d-2cea7f8397cb" />
+
 
 ## 10. Что в итоге получилось
 
