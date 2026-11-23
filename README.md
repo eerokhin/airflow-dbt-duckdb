@@ -191,8 +191,6 @@ shop:
 Создадим файл `models/staging/sources.yml`:
 
 ```yaml
-version: 2
-
 sources:
   - name: raw
     schema: raw
