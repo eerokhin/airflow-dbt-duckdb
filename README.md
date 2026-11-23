@@ -416,15 +416,33 @@ group by order_date
 dbt build
 ```
 
+<img width="963" height="391" alt="image" src="https://github.com/user-attachments/assets/ef2fb6c3-34ba-4647-a55b-bb9d334b05a3" />
+
+Шаг 1. Создалось представление.
+
+Шаг 3, 4, 5, 6, 7. Прогнал проверки.
+
+И только после этого собрал таблицы для витрины.
+
+Шаг 8,9. Собрал витрины.
+
+Шаг 10. Сделал еще тест, который написан нами в виде sql скрипта в папке `test`.
+
 Если хотим выполнить сборку для production:
 
 ```bash
 dbt build --target prod
 ```
 
+Порядок нигде не указывали, dbt вывел его из ref.
 Команда `dbt build` не просто запускает SQL-файлы подряд. Она учитывает зависимости моделей и выполняет сборку в правильном порядке, включая связанные с моделями тесты.
 
-## 9. Проверки качества данных
+Ну и сама витрина:
+
+<img width="348" height="194" alt="image" src="https://github.com/user-attachments/assets/762c5865-fecf-4c1c-af37-f13ca60d9de1" />
+
+
+## 9. Проверки качества данных (Tests)
 
 Но построить витрину — это ещё не всё.
 
@@ -439,8 +457,12 @@ dbt build --target prod
 `models/staging/stg_orders.yml`
 
 ```yaml
+version: 2
+
 models:
   - name: stg_orders
+    description: Cleaned and standardized shop orders.
+
     columns:
       - name: order_id
         data_tests:
@@ -455,6 +477,7 @@ models:
 
       - name: client_id
         data_tests:
+          - not_null
           - relationships:
               arguments:
                 to: source('raw', 'clients')
