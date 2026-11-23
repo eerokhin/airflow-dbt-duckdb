@@ -498,8 +498,123 @@ where revenue_rub < 0
 
 <img width="963" height="208" alt="image" src="https://github.com/user-attachments/assets/78de4669-7493-41ea-ba2d-2cea7f8397cb" />
 
+## 10. Проверка теста
 
-## 10. Что в итоге получилось
+В сырые данные добавим дубль заказа. Из PowerShell:
+
+```docker compose exec airflow python```
+
+В Python:
+
+```python
+import duckdb
+
+con = duckdb.connect('/opt/airflow/warehouse/shop.duckdb')
+
+con.execute("""
+    INSERT INTO raw.orders
+    SELECT *
+    FROM raw.orders
+    LIMIT 1
+""")
+```
+
+Это скопирует одну существующую запись в таблице, включая тот же `order_id`.
+
+Проверим, что дубль появился:
+
+```python
+con.sql("""
+    SELECT order_id, COUNT(*) AS cnt
+    FROM raw.orders
+    GROUP BY order_id
+    HAVING COUNT(*) > 1
+""").show()
+```
+
+<img width="370" height="219" alt="image" src="https://github.com/user-attachments/assets/d5c4b3dd-2ff8-4b1b-9483-b350f1c74319" />
+
+Выходим из python: ```exit()```
+
+```docker compose exec airflow dbt build --project-dir /opt/airflow/dbt --profiles-dir /opt/airflow/dbt --target dev```
+
+Команда, которая позволяет запустить dbt build внутри Docker-контейнера Airflow.
+
+Увидим что тест на уникальность упал
+
+<img width="1447" height="401" alt="image" src="https://github.com/user-attachments/assets/f494da00-ec60-46d4-8041-3b5df8c82d2f" />
+
+И витрину `dev_evgen.daily_revenue` DBT пропустил, и таблица не пересобралась, в ней остались правильные цифры.
+
+Проверим:
+
+```
+docker compose exec airflow python -c "import duckdb; con=duckdb.connect('/opt/airflow/warehouse/shop.duckdb'); print(con.sql('SELECT * FROM dev_evgen.daily_revenue').df().to_string(index=False))"
+```
+
+<img width="1088" height="137" alt="image" src="https://github.com/user-attachments/assets/0e59491b-988f-4aaa-b825-cb31a900b794" />
+
+Тоесть аналитики увидят данные на день старее, но они не увидят выручку с дублями. Именно поэтому тесты DBT пишут на промежуточных моделях. Они стоят в графе перед витринами и не пускают ошибки дальше в прод.
+
+## 11. Инкремент
+
+Таблица пересоздается целиком при каждом запуске, для 6 заказов это нормально. А вот для 1 млрд строк, это плохо.
+
+Для этого есть третья материализация, `incremental`
+
+`dbt\models\marts\orders_inc.sql`
+```sql
+{{config(materialized='incremental', unique_key='order_id')}}
+select
+    order_id,
+    client_id,
+    order_date,
+    amount_rub,
+    status
+from {{ ref('stg_orders') }}
+{% if is_incremental() %}
+where order_date >= (select max(order_date) from {{ this }})
+{% endif %}
+```
+При первом запуске dbt строит таблицу целиком, а вот при следующем срабатывает условие:
+
+```sql
+{% if is_incremental() %}
+where order_date >= (select max(order_date) from {{ this }})
+{% endif %}
+```
+И dbt берет только самые свежие строки, начиная с последней даты которая уже есть. 
+
+Чтобы не задавливались указали `unique_key='order_id'` и еще указали `>=`, а не `>` так как заказы за последний день могут доехать позже и их тоже надо забрать.
+
+При инкрементальной модели, если запуск первый то просто создает таблицу, можно увидеть запрос в папке таргет. А если запрос второй то он сначала удаляет, а потом создает.
+
+<img width="958" height="373" alt="image" src="https://github.com/user-attachments/assets/b367b138-aaaf-4cca-a9f3-2a0cb1d6e1fc" />
+
+Тоесть dbt удаляет из целевой таблицы записи, order_id которых присутствуют во временной таблице.
+
+Например, если во временной таблице есть order_id = 1001, старая запись с таким ID будет удалена.
+
+А затем dbt вставляет содержимое временной таблицы в основную таблицу.
+
+Временная таблица orders_inc__dbt_tmp... — это промежуточная таблица, которую dbt автоматически создаёт во время выполнения incremental-модели.
+
+## 12. Снапшоты 
+
+## Править
+
+Допустим клиентка Анна переехала из Москвы в Казань.
+
+В исходной таблице город просто перезаписали. Старое значение потеряно. Снапшот это исправляет, при каждом запуске дбт он сравнивает данные с прошлым разом. Если город изменился.
+Он закрывает старую дату в колонке `dbt_vaild_to` и добавляет новую. У актуальной строки эта колонка будет пустой.
+Это SCD 2, только его не надо писать руками.
+
+
+
+
+## 13. Что в итоге получилось
+
+## Править
 
 Давайте посмотрим на всю цепочку.
 
