@@ -20,14 +20,15 @@
 
 И вот здесь появляется dbt.
 
-<img width="2928" height="468" alt="deepseek_mermaid_20261123_86c902" src="https://github.com/user-attachments/assets/ca87ddd8-d260-42f7-a345-2d9298d7ef58" />
-
+<img width="2480" height="1000" alt="deepseek_svg_20261123_eccf4c" src="https://github.com/user-attachments/assets/8f2e8626-2b6b-4a4a-bf6e-d85bd36b0687" />
 
 ## 2. Как делают без dbt
 
 Представим, что dbt у нас нет.
 
 Мы просто пишем отдельные SQL-скрипты.
+
+<img width="2400" height="840" alt="deepseek_svg_20261123_91b0df" src="https://github.com/user-attachments/assets/eae0380f-fc50-44e6-8e03-d6f06b770729" />
 
 Первый скрипт очищает сырые заказы и сохраняет результат в промежуточную таблицу.
 
