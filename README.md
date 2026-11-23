@@ -389,8 +389,6 @@ dbt build --target prod
 `models/staging/stg_orders.yml`
 
 ```yaml
-version: 2
-
 models:
   - name: stg_orders
     columns:
