@@ -114,6 +114,7 @@ shop/
 │   ├── staging/
 │   │   ├── stg_orders.sql
 │   │   └── sources.yml
+│   │   └── stg_orders.yml
 │   └── marts/
 │       └── daily_revenue.sql
 ├── snapshots/
