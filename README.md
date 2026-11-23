@@ -753,7 +753,67 @@ dbt должен:
 
 <img width="1343" height="647" alt="image" src="https://github.com/user-attachments/assets/33b83b75-2065-43bb-8446-894254bacdbd" />
 
+Проверим таблицы:
 
+```python
+python -c "import duckdb;
+con=duckdb.connect('warehouse/shop.duckdb');
+con.sql('SHOW TABLES FROM dev_evgen').show();
+con.close()"
+```
+
+<img width="152" height="148" alt="image" src="https://github.com/user-attachments/assets/304c178d-2e70-4877-a37c-28530205e57e" />
+
+Главное не путать структуру:
+
+<img width="708" height="684" alt="image" src="https://github.com/user-attachments/assets/4a1bfd78-9edb-4fed-aaf9-5cb10058317a" />
+
+dbt не выполняет SQL-вычисления самостоятельно. Он формирует SQL-запросы и отправляет их на выполнение в DuckDB.
+
+Как происходит выполнение. Допустим, у нас есть модель `stg_orders.sql`:
+```sql
+select
+    order_id,
+    client_id,
+    amount_kop / 100 as amount_rub
+from {{ source('raw', 'orders') }}
+```
+
+Когда мы запускаем: `dbt build`. Происходит следующее:
+
+1. dbt читает SQL-файл модели.
+2. Обрабатывает Jinja-конструкции, например `source()`.
+3. Компилирует SQL в обычный SQL-запрос.
+4. Через адаптер `dbt-duckdb` отправляет запрос в `DuckDB`.
+5. `DuckDB` выполняет SQL: читает данные, вычисляет выражения и создаёт результат.
+6. dbt получает результат выполнения и переходит к следующим моделям и тестам.
+
+Сейчас мы запускаем сборку вручную из PowerShell командой: `dbt build`. То есть пока процесс такой:
+
+1. Ты запускаешь команду.
+2. dbt читает конфигурацию и SQL-модели.
+3. dbt отправляет SQL-запросы в DuckDB.
+4. DuckDB выполняет запросы.
+5. dbt запускает тесты и выводит результат.
+
+Автоматического расписания пока нет. Позже можно подключить Airflow, и он будет запускать `dbt build` автоматически, например каждый день в `06:00`.
+Тогда не придётся запускать сборку вручную. Airflow будет управлять всем процессом.
+
+Сейчас у нас собралось в dev, а именно в схеме: `dev_evgen`. Конфигурация `prod` пока существует, но мы её ещё не запускали. Чтобы собрать модели в `analytics`, выполни из корня проекта:
+
+```
+dbt build --target prod
+```
+
+dbt возьмёт настройки из секции:
+
+```
+prod:
+  type: duckdb
+  path: warehouse/shop.duckdb
+  schema: analytics
+  threads: 1
+```
 
 
 
