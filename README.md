@@ -1,4 +1,4 @@
-# Как работает dbt: от сырых данных до готовой витрины
+<img width="338" height="168" alt="image" src="https://github.com/user-attachments/assets/8354336f-cf96-479f-a68f-0f0324f76737" /># Как работает dbt: от сырых данных до готовой витрины
 
 ## 1. Откуда берутся данные для витрины
 
@@ -567,31 +567,30 @@ con.close()
 
 <img width="625" height="134" alt="image" src="https://github.com/user-attachments/assets/4e0e198d-3a8e-4a1b-bec1-b74ae9ccbb73" />
 
-<img width="370" height="219" alt="image" src="https://github.com/user-attachments/assets/d5c4b3dd-2ff8-4b1b-9483-b350f1c74319" />
-
 Выходим из python: ```exit()```
 
-```docker compose exec airflow dbt build --project-dir /opt/airflow/dbt --profiles-dir /opt/airflow/dbt --target dev```
+И снова запускаю: `dbt build`.
 
-Команда, которая позволяет запустить dbt build внутри Docker-контейнера Airflow.
+Увидим что тест на уникальность упал и нашел одну плохую строку.
 
-Увидим что тест на уникальность упал
+<img width="1334" height="531" alt="image" src="https://github.com/user-attachments/assets/9f0fb7af-21e7-4065-af5e-bcc4785bd065" />
 
-<img width="1447" height="401" alt="image" src="https://github.com/user-attachments/assets/f494da00-ec60-46d4-8041-3b5df8c82d2f" />
-
-И витрину `dev_evgen.daily_revenue` DBT пропустил, и таблица не пересобралась, в ней остались правильные цифры.
+И витрину `dev_evgen.daily_revenue` и другие витрины DBT пропустил, и таблица не пересобралась, в ней остались правильные цифры.
 
 Проверим:
 
 ```
-docker compose exec airflow python -c "import duckdb; con=duckdb.connect('/opt/airflow/warehouse/shop.duckdb'); print(con.sql('SELECT * FROM dev_evgen.daily_revenue').df().to_string(index=False))"
+python -c "import duckdb;
+con=duckdb.connect('warehouse/shop.duckdb');
+con.sql('SELECT * FROM dev_evgen.daily_revenue ORDER BY order_date').show();
+con.close()"
 ```
 
-<img width="1088" height="137" alt="image" src="https://github.com/user-attachments/assets/0e59491b-988f-4aaa-b825-cb31a900b794" />
+<img width="338" height="168" alt="image" src="https://github.com/user-attachments/assets/4874fbec-c986-4701-8e83-674f9a094012" />
 
 Тоесть аналитики увидят данные на день старее, но они не увидят выручку с дублями. Именно поэтому тесты DBT пишут на промежуточных моделях. Они стоят в графе перед витринами и не пускают ошибки дальше в прод.
 
-## 11. Инкремент
+## 11. Инкремент Далее править
 
 Таблица пересоздается целиком при каждом запуске, для 6 заказов это нормально. А вот для 1 млрд строк, это плохо.
 
