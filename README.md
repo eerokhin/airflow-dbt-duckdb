@@ -107,20 +107,37 @@ dbt работает с данными, которые уже находятся
 Например:
 
 ```text
-shop/
-├── dbt_project.yml
-├── profiles.yml
-├── macros
+dbt-duckdb-shop/
+│
+├── data/
+│   └── raw/
+│       ├── orders.csv
+│       └── clients.csv
+│
+├── warehouse/
+│
+├── scripts/
+│   └── load_data.py
+│
 ├── models/
 │   ├── staging/
 │   │   ├── stg_orders.sql
 │   │   └── stg_orders.yml
-│   └── marts/
-│   │   └── daily_revenue.sql
+│   ├── marts/
+│   │   ├── daily_revenue.sql
+│   │   └── orders_inc.sql
 │   └── sources.yml
+│
 ├── snapshots/
-└── tests/
-    └── revenue_not_negative.sql
+│   └── clients_snapshot.yml
+│
+├── tests/
+│   └── revenue_not_negative.sql
+│
+├── dbt_project.yml
+├── profiles.yml
+├── requirements.txt
+└── .gitignore
 ```
 
 Разберём основные файлы.
