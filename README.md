@@ -110,13 +110,14 @@ dbt работает с данными, которые уже находятся
 shop/
 ├── dbt_project.yml
 ├── profiles.yml
+├── macros
 ├── models/
 │   ├── staging/
 │   │   ├── stg_orders.sql
-│   │   └── sources.yml
 │   │   └── stg_orders.yml
 │   └── marts/
-│       └── daily_revenue.sql
+│   │   └── daily_revenue.sql
+│   └── sources.yml
 ├── snapshots/
 └── tests/
     └── revenue_not_negative.sql
