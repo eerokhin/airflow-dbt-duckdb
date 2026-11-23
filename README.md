@@ -111,7 +111,6 @@ shop/
 ├── dbt_project.yml
 ├── profiles.yml
 ├── models/
-│   ├── sources.yml
 │   ├── staging/
 │   │   ├── stg_orders.sql
 │   │   └── stg_orders.yml
