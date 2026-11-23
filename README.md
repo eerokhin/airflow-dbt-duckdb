@@ -113,7 +113,7 @@ shop/
 ├── models/
 │   ├── staging/
 │   │   ├── stg_orders.sql
-│   │   └── stg_orders.yml
+│   │   └── sources.yml
 │   └── marts/
 │       └── daily_revenue.sql
 ├── snapshots/
