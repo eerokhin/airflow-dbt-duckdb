@@ -20,7 +20,7 @@
 
 И вот здесь появляется dbt.
 
-<img width="2480" height="1000" alt="deepseek_svg_20261123_eccf4c" src="https://github.com/user-attachments/assets/8f2e8626-2b6b-4a4a-bf6e-d85bd36b0687" />
+<img width="2480" height="1000" alt="deepseek_svg_20261123_47c420" src="https://github.com/user-attachments/assets/2ef3c2eb-bf24-409b-800d-69b72cbe0b46" />
 
 ## 2. Как делают без dbt
 
