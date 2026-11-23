@@ -464,7 +464,7 @@ models:
 
 Создадим файл:
 
-`tests/revenue_not_negative.sql`
+```tests/revenue_not_negative.sql```
 
 ```sql
 select *
@@ -474,7 +474,7 @@ where revenue_rub < 0
 
 Как работает этот тест. DBT превращает правило в SQL запрос:
 
-`dbt\target\compiled\shop\tests\revenue_not_negative.sql
+```dbt\target\compiled\shop\tests\revenue_not_negative.sql```
 
 ```sql
 -- Singular test: должен вернуть 0 строк.
