@@ -619,9 +619,9 @@ where order_date >= (select max(order_date) from {{ this }})
 where order_date >= (select max(order_date) from {{ this }})
 {% endif %}
 ```
-И dbt берет только самые свежие строки, начиная с последней даты которая уже есть. 
+И dbt берет только самые свежие строки, начиная с последней даты которая уже есть в таблице. 
 
-Чтобы не задваивались записи, указали `unique_key='order_id'` и еще указали `>=`, а не `>` так как заказы за последний день могут доехать позже и их тоже надо забрать.
+В фильтрах указали что берем дату `>=`, а не `>` так как заказы за последний день могут доехать позже и их тоже надо забрать. Одни и те же заказы могут прийти повторно и чтобы они не задваивались, указали `unique_key='order_id'` 
 
 При первом запуске incremental-модели dbt создаёт целевую таблицу и загружает в неё данные из источника целиком. Можно увидеть запрос в папке таргет. 
 
@@ -645,17 +645,71 @@ where order_date >= (select max(order_date) from {{ this }})
 
 ## 12. Снапшоты 
 
-## Править
-
 Допустим клиентка Анна переехала из Москвы в Казань.
 
 В исходной таблице город просто перезаписали. Старое значение потеряно. Снапшот это исправляет, при каждом запуске дбт он сравнивает данные с прошлым разом. Если город изменился.
-Он закрывает старую дату в колонке `dbt_vaild_to` и добавляет новую. У актуальной строки эта колонка будет пустой.
+Он закрывает старую дату в колонке **`dbt_vaild_to`** и добавляет новую. У актуальной строки эта колонка будет пустой (`NULL`).
 Это SCD 2, только его не надо писать руками.
 
+Текущие настройки:
 
+<img width="375" height="262" alt="image" src="https://github.com/user-attachments/assets/c04ff0df-c316-43b9-98d5-f37362e55f28" />
 
+Проверим текущие записи:
 
+```python
+python -c "import duckdb;
+con=duckdb.connect('warehouse/shop.duckdb');
+con.sql('SELECT * FROM dev_evgen_snapshots.clients_snapshot').show();
+con.close()"
+```
+
+<img width="1598" height="168" alt="image" src="https://github.com/user-attachments/assets/1ff94792-c9c6-4412-b20f-5c4d64102028" />
+
+`dbt_scd_id` — идентификатор версии записи.
+`dbt_updated_at` — время последнего обновления версии
+`dbt_valid_from` — когда версия записи стала актуальной.
+`dbt_valid_to` — когда версия перестала быть актуальной (NULL означает, что версия актуальна).
+
+Например, изменим город клиента с `client_id = 1` на `Tula`:
+
+```python
+python -c "import duckdb; con=duckdb.connect('warehouse/shop.duckdb'); con.execute('UPDATE raw.clients SET city = ' + chr(39) + 'Tula' + chr(39) + ' WHERE client_id = 1'); con.close()"
+```
+
+Убедимся, что в исходной таблице город изменился:
+
+```python
+python -c "import duckdb;
+con=duckdb.connect('warehouse/shop.duckdb');
+con.sql('SELECT client_id, first_name, city FROM raw.clients WHERE client_id = 1').show();
+con.close()"
+```
+
+Было:
+
+<img width="327" height="115" alt="image" src="https://github.com/user-attachments/assets/57952d17-f4b6-4bcf-a659-43957d3fb412" />
+
+Стало:
+
+<img width="333" height="114" alt="image" src="https://github.com/user-attachments/assets/f316f27d-5460-423e-928f-7bca06f455c0" />
+
+Теперь запустим снапшот. Выполним в PowerShell из корневой папки проекта:
+
+```
+dbt snapshot
+```
+
+И проверим:
+
+```python
+python -c "import duckdb;
+con=duckdb.connect('warehouse/shop.duckdb');
+con.sql('SELECT * FROM dev_evgen_snapshots.clients_snapshot ORDER BY dbt_valid_from').show();
+con.close()"
+```
+
+<img width="1710" height="190" alt="image" src="https://github.com/user-attachments/assets/8d12fa83-5f2b-4fb0-95a2-3f350bd55233" />
 
 
 ## 13. Запуск
